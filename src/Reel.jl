@@ -92,7 +92,7 @@ end
 
 ### Roll teh camraz! ###
 
-function roll(render<:Union(Function, DataType);
+function roll(render::Union(Function, DataType);
                  fps=30, duration=5.0)
     t      = 0.0
     dt     = 1.0 / fps
@@ -102,6 +102,8 @@ function roll(render<:Union(Function, DataType);
     frames = Frames(mime)
     push!(frames, frame)
 
+    # frames already contains one frame for t = 0
+    # This loop adds frames for t = 1:duration
     for i in 1:steps
         t += dt
         push!(frames, render(t, dt))
