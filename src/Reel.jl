@@ -26,7 +26,7 @@ Frames{M <: MIME}(m::M; fps=30) = Frames{M}(fps=fps)
 
 extension(m::MIME"image/png") = "png"
 extension(m::MIME"image/jpeg") = "jpg"
-extension(s::AbstractString) = split(s, ".")[end] 
+extension(s::AbstractString) = split(s, ".")[end]
 
 function writeframe(filename, mime::MIME, frame)
     file = open(filename, "w")
@@ -35,16 +35,26 @@ function writeframe(filename, mime::MIME, frame)
 end
 
 
-function push!{M}(frames::Frames{M}, x)
+function push!{M}(frames::Frames{M}, frame)
+    ext = extension(M())
     frames.length += 1
     writeframe(
-        joinpath(frames.tmpdir,
-            string(frames.length, ".", extension(M()))),
-        M(), x)
+        joinpath(frames.tmpdir, "$(frames.length).$ext"),
+        M(), frame)
+    frames
+end
+function push!{M}(frames::Frames{M}, arr::AbstractArray)
+    ext = extension(M())
+    for frame in arr
+        frames.length += 1
+        writeframe(
+            joinpath(frames.tmpdir, "$(frames.length).$ext"),
+            M(), frame)
+    end
     frames
 end
 
-const mime_ordering = map(MIME, [
+const MIME_ORDERING = map(MIME, [
     "image/png",
     "image/svg",
     "image/jpeg",
@@ -52,7 +62,7 @@ const mime_ordering = map(MIME, [
 ])
 
 function bestmime(x)
-    for m in mime_ordering
+    for m in MIME_ORDERING
         if mimewritable(m, x)
             return m
         end
@@ -82,7 +92,7 @@ end
 
 ### Roll teh camraz! ###
 
-function roll(render::Union(Function, Type);
+function roll(render<:Union(Function, DataType);
                  fps=30, duration=5.0)
     t      = 0.0
     dt     = 1.0 / fps
@@ -102,10 +112,10 @@ end
 function roll(frames::AbstractArray; fps=30)
     @assert length(frames) > 1
     mime = bestmime(frames[1])
-    reduce(push!, Frames(mime, fps=fps), frames)
+    push!(Frames(mime, fps=fps), frames)
 end
 
-function newname!(ext)
+function newname(ext)
     string("reel-", rand(Uint), ".", ext)
 end
 
@@ -127,7 +137,7 @@ function writemime(io::IO, ::MIME"text/html", frames::Frames)
     # If IJulia is present, see if the frames are rendered
     global _output_type
     if frames.rendered == nothing || !isfile(frames.rendered) || extension(frames.rendered) != _output_type
-        fn = newname!(_output_type)
+        fn = newname(_output_type)
         write(fn, frames)
         frames.rendered = fn
     end
@@ -140,7 +150,7 @@ function writemime(io::IO, ::MIME"text/html", frames::Frames)
                 writehtml(io, "files/" * file, extension(file))
             else
                 # the file is unreachable to the server, so we symlink or copy it.
-                fn = newname!(_output_type)
+                fn = newname(_output_type)
                 try
                     symlink(frames.rendered, fn)
                 catch
