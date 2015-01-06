@@ -102,9 +102,9 @@ function roll(render<:Union(Function, DataType);
     frames = Frames(mime)
     push!(frames, frame)
 
-    for i=2:steps
-        push!(frames, render(t, dt))
+    for i in 1:steps
         t += dt
+        push!(frames, render(t, dt))
     end
     frames
 end
